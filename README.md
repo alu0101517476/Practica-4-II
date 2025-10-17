@@ -10,6 +10,10 @@ Email: alu0101517476@ull.edu.es
 
 ### **Ejercicio 1**
 
+# **Hecho, explicar lo que hice y poner gif**
+
+
+Código Script
 ```C#
 using System;
 using UnityEngine;
