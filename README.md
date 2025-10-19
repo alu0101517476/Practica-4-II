@@ -627,3 +627,159 @@ En el siguiente GIF se puede ver el ejercicio en funcionamiento:
 Como se puede apreciar, en la consola aparece la puntuación que obtiene el cubo al tocar cada escudo
 
 ### **Ejercicio 6**
+
+Para resolver el ejercicio, se creó una interfaz utilizando TextMeshPro para mostrar la puntuación en pantalla.
+El sistema funciona a través del ScoreManager, que almacena los puntos y emite un evento cuando la puntuación cambia.
+El script `ScoreUI` recibe este evento y actualiza el texto del Canvas automáticamente.
+El cubo detecta los escudos mediante colisiones, suma la puntuación correspondiente y activa la actualización de la interfaz.
+Con esta estructura, la puntuación del jugador se muestra en tiempo real de forma clara y automática.
+
+Los Scripts que se han utilizado para este ejercicio son los siguientes: 
+
+1. `ScoreUI.cs`
+
+```C#
+using UnityEngine;
+using TMPro;
+
+public class ScoreUI : MonoBehaviour
+{
+    public TextMeshProUGUI scoreText;
+
+    void Start()
+    {
+        UpdateScore(0); // Inicializa en 0
+        ScoreManager.I.OnScoreChanged += UpdateScore; // Suscribirse al evento
+    }
+
+    void OnDestroy()
+    {
+        ScoreManager.I.OnScoreChanged -= UpdateScore; // Buenas prácticas
+    }
+
+    void UpdateScore(int newScore)
+    {
+        scoreText.text = "Puntuación: " + newScore;
+    }
+}
+
+```
+
+2. `ScoreManager.cs`
+
+```C#
+using UnityEngine;
+using System;
+
+public class ScoreManager : MonoBehaviour
+{
+    public int Score { get; private set; }
+
+    // Singleton con autocreación segura
+    private static ScoreManager _instance;
+    public static ScoreManager I
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = FindObjectOfType<ScoreManager>();
+                if (_instance == null)
+                {
+                    var go = new GameObject("ScoreManager");
+                    _instance = go.AddComponent<ScoreManager>();
+                }
+            }
+            return _instance;
+        }
+    }
+
+    public event Action<int> OnScoreChanged;
+
+    void Awake()
+    {
+        if (_instance != null && _instance != this) { Destroy(gameObject); return; }
+        _instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
+
+    public void AddPoints(int points, ShieldType type, string fromName)
+    {
+        Score += points;
+        Debug.Log($"[Score] +{points} (Shield {type}) por '{fromName}'. Total = {Score}");
+        OnScoreChanged?.Invoke(Score);
+    }
+}
+
+```
+
+El GIF que muestra en funcionamiento la escena es el siguiente:
+
+![Ejercicio 6](Img/EVENTOS%206.gif)
+
+### **Ejercicio 7**
+
+Para mostrar un mensaje de felicitación al alcanzar 100 puntos, se añadió un texto en la interfaz gráfica mediante un elemento UI (TextMeshPro), ubicado en la parte central de la pantalla y desactivado al inicio. A través del script `ScoreUI`, se detecta cuando la puntuación del jugador alcanza un múltiplo de 100 utilizando un evento del `ScoreManager`. Cuando esto ocurre, el script activa el texto de “Enhorabuena” durante dos segundos mediante una corrutina, y luego lo oculta automáticamente. Con esta lógica se consigue que el mensaje aparezca de forma temporal cada vez que el jugador supera un nuevo umbral de 100 puntos.
+
+El único script que se ha modificado es `ScoreUI.cs`
+
+```C#
+using UnityEngine;
+using TMPro;
+using System.Collections;
+
+public class ScoreUI : MonoBehaviour
+{
+    [Header("Referencias UI")]
+    public TextMeshProUGUI scoreText;
+    public TextMeshProUGUI congratsText;
+
+    private int lastMilestone = 0;
+
+    void Start()
+    {
+        UpdateScore(0);
+        ScoreManager.I.OnScoreChanged += UpdateScore;
+        congratsText.gameObject.SetActive(false); // ocultar mensaje al inicio
+    }
+
+    void OnDestroy()
+    {
+        ScoreManager.I.OnScoreChanged -= UpdateScore;
+    }
+
+    void UpdateScore(int newScore)
+    {
+        scoreText.text = "Puntuación: " + newScore;
+
+        // Cada 100 puntos muestra mensaje
+        if (newScore >= lastMilestone + 100)
+        {
+            lastMilestone = newScore - (newScore % 100); // marca el siguiente múltiplo
+            StartCoroutine(ShowCongrats());
+        }
+    }
+
+    IEnumerator ShowCongrats()
+    {
+        congratsText.text = "¡Enhorabuena!";
+        congratsText.gameObject.SetActive(true);
+        yield return new WaitForSeconds(2f);
+        congratsText.gameObject.SetActive(false);
+    }
+}
+
+```
+
+A continuación se muestra un GIF con el funcionamiento del ejercicio:
+
+![Ejercicio 7](Img/EVENTOS%207.gif)
+
+### **Ejercicio 8**
+
+### **Ejercicio 9**
+
+En mi caso, en el ejercicio 3 ya apliqué que el ejercicio se resolviera con el cubo siendo un objeto físico. Esto lo podemos comprobar cuando un cubo cae desde el cielo por la gravedad y colisiona con uno de los enemigos de tipo 2, los cuales son verdes y los enemigos de tipo 1, que son rojos, van hacia el otro cubo.
+En el siguiente GIF se puede ver este comportamiento:
+
+![Ejercicio 9](Img/EVENTOS%20Ejercicio%203.gif)
