@@ -135,7 +135,7 @@ Para conseguir esto se usaron scripts que controlan los eventos, el movimiento d
 
 Los Scripts que se crearon para este ejercicio son los siguientes:
 
-1. GameSignals.cs
+1. `GameSignals.cs`
 
 ```C#
 using System;
@@ -154,7 +154,7 @@ public static class GameSignals
 
 ```
 
-2. CubeInteractor.cs
+2. `CubeInteractor.cs`
 
 ```C#
 using UnityEngine;
@@ -184,7 +184,7 @@ public class CubeInteractor : MonoBehaviour
 
 ```
 
-3. Shield.cs
+3. `Shield.cs`
 
 ```C#
 using UnityEngine;
@@ -209,7 +209,7 @@ public class Shield : MonoBehaviour
 
 ```
 
-4. HumanoidController.cs
+4. `HumanoidController.cs`
 
 ```C#
 using System.Linq;
@@ -332,3 +332,298 @@ public class HumanoidController : MonoBehaviour
 En el siguiente GIF se puede ver el funcionamiento de los Scripts, primero un cubo toca a los humanoides de tipo 1 y después otro cae y toca a los de tipo 2. Viendose en cada caso que es lo que pasa.
 
 ![Ejercicio 3](Img/EVENTOS%20Ejercicio%203.gif)
+
+### **Ejercicio 4**
+
+En este ejercicio se implementó una mecánica basada en la detección de proximidad entre el cubo y un objeto de referencia. Cuando el cubo entra en esa zona, se activa un evento global que provoca comportamientos diferentes en los humanoides según su tipo.
+
+Se crearon dos tipos de humanoides:
+
+Tipo 1: al activarse el evento, se teletransportan directamente a un escudo objetivo fijado de antemano.
+
+Tipo 2: al activarse el evento, se orientan automáticamente hacia un objeto específico de la escena.
+
+Para detectar la proximidad, se colocó un objeto de referencia con un SphereCollider en modo Trigger y el script ProximityZone. Este objeto actúa como sensor y emite una señal cuando el cubo entra en su área.
+
+Se utilizó un sistema de eventos mediante el script `GameSignals`, que permite comunicar la detección al resto de los objetos de forma ordenada.
+
+Cada humanoide tiene el script `HumanoidReaction`, que interpreta el evento y ejecuta la acción correspondiente según su tipo.
+
+Con esta estructura, se logró que el comportamiento de los personajes se active automáticamente al acercarse el cubo al objeto de referencia, cumpliendo todos los requisitos del enunciado.
+
+El código de los Scripts es el siguiente:
+
+1. `GameSignals.cs`
+
+```C#
+using System;
+using UnityEngine;
+
+public enum HumanoidType { Type1, Type2 }
+public enum ShieldType { Type1, Type2 }
+
+public static class GameSignals
+{
+    // EJERCICIO 3 (cubo toca humanoide -> reaccionan los Type1)
+    public static event Action<HumanoidType, Transform> OnCubeHitsHumanoid;
+
+    public static void EmitCubeHitsHumanoid(HumanoidType hitType, Transform cube)
+        => OnCubeHitsHumanoid?.Invoke(hitType, cube);
+
+    // (Si además usas el ejercicio de “proximidad”)
+    public static event Action<Transform> OnCubeNearReference;
+    public static void EmitCubeNearReference(Transform reference)
+        => OnCubeNearReference?.Invoke(reference);
+}
+
+```
+
+2. `ProximityZone.cs`
+
+```C#
+using UnityEngine;
+
+[RequireComponent(typeof(SphereCollider))]
+public class ProximityZone : MonoBehaviour
+{
+    [Tooltip("Etiqueta que debe tener el Cubo para activar la proximidad.")]
+    public string cubeTag = "Cube";
+
+    void Reset()
+    {
+        var col = GetComponent<SphereCollider>();
+        col.isTrigger = true;
+        col.radius = 3f; // Ajusta tu radio de proximidad
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag(cubeTag))
+        {
+            GameSignals.EmitCubeNearReference(transform);
+        }
+    }
+}
+
+```
+
+3. `HumanoidReaction.cs`
+
+```C#
+using UnityEngine;
+
+public class HumanoidReaction : MonoBehaviour
+{
+    [Header("Tipo de humanoide")]
+    public HumanoidType type = HumanoidType.Type1; // usa el enum definido en GameSignals.cs
+
+    [Header("Solo Type1: escudo/posición de teletransporte")]
+    public Transform teleportTarget;
+
+    [Header("Solo Type2: objeto a mirar al activarse")]
+    public Transform lookAtTarget;
+    public float rotateSpeedDegPerSec = 360f; // velocidad de giro
+
+    private bool _shouldOrient;
+
+    void OnEnable()  => GameSignals.OnCubeNearReference += OnCubeNearReference;
+    void OnDisable() => GameSignals.OnCubeNearReference -= OnCubeNearReference;
+
+    private void OnCubeNearReference(Transform referenceObject)
+    {
+        if (type == HumanoidType.Type1)
+        {
+            if (teleportTarget != null)
+            {
+                // Teletransporte directo
+                transform.position = teleportTarget.position;
+            }
+        }
+        else // Type2
+        {
+            if (lookAtTarget != null)
+            {
+                // Activa giro suave en Update
+                _shouldOrient = true;
+
+                // Si lo quieres instantáneo, usa esta línea y comenta la anterior:
+                // transform.rotation = Quaternion.LookRotation((lookAtTarget.position - transform.position).normalized, Vector3.up);
+            }
+        }
+    }
+
+    void Update()
+    {
+        if (type != HumanoidType.Type2 || !_shouldOrient || lookAtTarget == null) return;
+
+        Vector3 dir = lookAtTarget.position - transform.position;
+        dir.y = 0f; // ignorar inclinación vertical (opcional)
+        if (dir.sqrMagnitude < 1e-6f) return;
+
+        Quaternion targetRot = Quaternion.LookRotation(dir.normalized, Vector3.up);
+        transform.rotation = Quaternion.RotateTowards(
+            transform.rotation,
+            targetRot,
+            rotateSpeedDegPerSec * Time.deltaTime
+        );
+
+        // Detener giro cuando ya apunta al objetivo
+        if (Quaternion.Angle(transform.rotation, targetRot) < 1f)
+            _shouldOrient = false;
+    }
+}
+
+```
+
+En el siguiente GIF se puede ver el comportamiento del ejercicio resuelto: 
+
+![Ejercicio 4](Img/EVENTOS%204.gif)
+
+### **Ejercicio 5**
+
+Para implementar la mecánica solicitada, se configuró una escena donde el cubo actúa como jugador y puede desplazarse manualmente en el editor para simular la interacción. Se crearon dos tipos de escudos en la escena (Tipo 1 y Tipo 2), los cuales otorgan diferentes puntuaciones al ser recogidos: 5 puntos para los escudos de tipo 1 y 10 puntos para los de tipo 2.
+
+Para lograr esta funcionalidad se desarrollaron los siguientes elementos:
+
+Script `Shield.cs`: identifica el tipo de escudo y define cuántos puntos otorga. Al ser recogido, el escudo se desactiva para evitar múltiples colisiones.
+
+Script `ScoreManager.cs`: gestiona la puntuación total del jugador y muestra el resultado actualizado en la consola cada vez que se recoge un escudo.
+
+Script `PlayerCollector.cs`: asignado al cubo. Detecta colisiones mediante OnTriggerEnter o OnCollisionEnter, identifica si el objeto golpeado es un escudo y, en ese caso, añade los puntos correspondientes e informa del evento en la consola.
+
+Cada escudo fue configurado con un collider físico, y el cubo se preparó con collider y rigidbody, permitiendo detectar correctamente las colisiones desde el editor. La prueba de funcionamiento se realizó moviendo manualmente el cubo en la escena para verificar que, al colisionar con cada escudo, este desaparece y la puntuación se actualiza correctamente.
+
+Con esta estructura se consigue un sistema funcional de recolección de objetos con puntuación dinámica, cumpliendo los requisitos especificados en el enunciado.
+
+El código de los Scripts comentados es el siguiente: 
+
+1. `Shield.cs`
+```C#
+using UnityEngine;
+
+[RequireComponent(typeof(Collider))]
+public class Shield : MonoBehaviour
+{
+    [Header("Tipo y puntos")]
+    public ShieldType type = ShieldType.Type1;  // Ahora usa el enum definido globalmente
+    [Tooltip("Si es 0, se calculará por tipo: Type1=5, Type2=10")]
+    public int customPoints = 0;
+
+    private bool _collected = false;
+
+    public int Points =>
+        customPoints > 0
+        ? customPoints
+        : (type == ShieldType.Type1 ? 5 : 10);
+
+    public void Collect()
+    {
+        if (_collected) return;
+        _collected = true;
+        gameObject.SetActive(false);
+    }
+}
+
+```
+
+2. `ScoreManager.cs`
+
+```C#
+using UnityEngine;
+
+public class ScoreManager : MonoBehaviour
+{
+    public int Score { get; private set; } = 0;
+
+    private static ScoreManager _instance;
+    public static ScoreManager I
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = FindObjectOfType<ScoreManager>();
+                if (_instance == null)
+                {
+                    var go = new GameObject("ScoreManager");
+                    _instance = go.AddComponent<ScoreManager>();
+                }
+            }
+            return _instance;
+        }
+    }
+
+    public void AddPoints(int points, ShieldType type, string fromName)
+    {
+        Score += points;
+        Debug.Log($"[Score] +{points} (Shield {type}) por colisión con '{fromName}'. Total = {Score}");
+    }
+}
+
+```
+
+3. `PlayerCollector.cs`
+
+```C#
+using UnityEngine;
+
+[RequireComponent(typeof(Collider))]
+public class PlayerCollector : MonoBehaviour
+{
+    [Header("¿Usar Trigger en el collider del cubo? (si no, será colisión física)")]
+    public bool useTrigger = true;
+
+    void Reset()
+    {
+        var col = GetComponent<Collider>();
+        col.isTrigger = useTrigger;
+
+        // Recomendado un Rigidbody para el cubo (cinemático si es trigger)
+        var rb = GetComponent<Rigidbody>();
+        if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
+        rb.isKinematic = useTrigger;     // trigger: cinemático
+        rb.useGravity = false;
+    }
+
+    // --- Vía Trigger ---
+    void OnTriggerEnter(Collider other)
+    {
+        if (!useTrigger) return;
+        TryCollect(other.gameObject, "OnTriggerEnter");
+    }
+
+    // --- Vía Colisión física ---
+    void OnCollisionEnter(Collision collision)
+    {
+        if (useTrigger) return;
+        TryCollect(collision.collider.gameObject, "OnCollisionEnter");
+    }
+
+    private void TryCollect(GameObject hit, string source)
+    {
+        // El escudo puede estar en el mismo objeto o en un padre
+        if (hit.TryGetComponent<Shield>(out var shield) == false)
+            shield = hit.GetComponentInParent<Shield>();
+
+        if (shield == null) return;
+
+        // Sumar y registrar
+        ScoreManager.I.AddPoints(shield.Points, shield.type, hit.name);
+
+        // Desactivar/recoger
+        shield.Collect();
+
+        // (Ayuda visual en consola)
+        Debug.Log($"[{source}] El cubo chocó con: {hit.name}");
+    }
+}
+
+```
+
+En el siguiente GIF se puede ver el ejercicio en funcionamiento: 
+
+![Ejercicio 5](Img/EVENTOS%205.gif)
+
+Como se puede apreciar, en la consola aparece la puntuación que obtiene el cubo al tocar cada escudo
+
+### **Ejercicio 6**
