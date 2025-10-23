@@ -777,6 +777,14 @@ A continuación se muestra un GIF con el funcionamiento del ejercicio:
 
 ### **Ejercicio 8**
 
+La escena del proyecto que hemos escogido es una escena sencilla en la que tenemos un personaje capsula y unos personajes de tipo zombie. Cuando el personaje capsula mira a los zombies, estos se vuelven más pequeños, contando como que se han recolectado con la mirada. En la siguiente imagen se puede ver lo que es un prototipo muy básico de la escena del proyecto
+
+![Ejercicio 8](Img/Escena%20proyecto.png)
+
+A continuación, se muestra un vídeo con la mecánica de recolección de los zombies
+
+![Video Ejercicio 8](Img/Funcionamiento%20recolección.gif)
+
 ### **Ejercicio 9**
 
 En mi caso, en el ejercicio 3 ya apliqué que el ejercicio se resolviera con el cubo siendo un objeto físico. Esto lo podemos comprobar cuando un cubo cae desde el cielo por la gravedad y colisiona con uno de los enemigos de tipo 2, los cuales son verdes y los enemigos de tipo 1, que son rojos, van hacia el otro cubo.
